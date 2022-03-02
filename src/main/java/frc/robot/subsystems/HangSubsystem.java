@@ -4,11 +4,11 @@ package frc.robot.subsystems;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel;
 import com.revrobotics.RelativeEncoder;
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.wpilibj.*;
-import edu.wpi.first.wpilibj.motorcontrol.MotorControllerGroup;
+import edu.wpi.first.wpilibj.Compressor;
+import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
 
@@ -124,10 +124,6 @@ public class HangSubsystem extends SubsystemBase {
 
     public RelativeEncoder getCenterHangEncoder() {
         return centerHangMotor.getEncoder();
-    }
-
-    public CANSparkMax getCenterHangMotor(){
-        return centerHangMotor;
     }
 
     public void stopAll() {

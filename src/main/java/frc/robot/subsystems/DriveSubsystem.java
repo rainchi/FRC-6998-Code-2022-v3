@@ -4,8 +4,8 @@ package frc.robot.subsystems;
 import com.kauailabs.navx.frc.AHRS;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel;
-import edu.wpi.first.math.MathUsageId;
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -36,8 +36,17 @@ public class DriveSubsystem extends SubsystemBase {
 
     private final MecanumDriveOdometry odometry;
 
-    public DriveSubsystem(XboxController driveController) {
+    private final CollectSubsystem intake;
+
+    private final PIDController ballAlignController = new PIDController(Constants.PID_BALL_ALIGN[0], Constants.PID_BALL_ALIGN[1], Constants.PID_BALL_ALIGN[2]);
+
+    private final PIDController straightController = new PIDController(Constants.PID_STRAIGHT[0], Constants.PID_STRAIGHT[1], Constants.PID_STRAIGHT[1]);
+
+    private double lastAngle = 0;
+
+    public DriveSubsystem(XboxController driveController, CollectSubsystem collectSubsystem) {
         this.driveController = driveController;
+        this.intake = collectSubsystem;
         zeroYaw();
         // Odometry
         odometry = new MecanumDriveOdometry(driveKinematics, navX.getRotation2d());
@@ -46,16 +55,26 @@ public class DriveSubsystem extends SubsystemBase {
         motorFrontRight.restoreFactoryDefaults();
         motorRearLeft.restoreFactoryDefaults();
         motorRearRight.restoreFactoryDefaults();
+        // set open loop ramp rate
+        motorFrontLeft.setOpenLoopRampRate(0.1);
+        motorFrontRight.setOpenLoopRampRate(0.1);
+        motorRearLeft.setOpenLoopRampRate(0.1);
+        motorRearRight.setOpenLoopRampRate(0.1);
+        // set closed loop ramp rate
+        motorFrontLeft.setClosedLoopRampRate(0.1);
+        motorFrontRight.setClosedLoopRampRate(0.1);
+        motorRearLeft.setClosedLoopRampRate(0.1);
+        motorRearRight.setClosedLoopRampRate(0.1);
         // Set current limit
-        motorFrontLeft.setSmartCurrentLimit(30);
-        motorFrontRight.setSmartCurrentLimit(30);
-        motorRearLeft.setSmartCurrentLimit(30);
-        motorRearRight.setSmartCurrentLimit(30);
+        motorFrontLeft.setSmartCurrentLimit(32);
+        motorFrontRight.setSmartCurrentLimit(32);
+        motorRearLeft.setSmartCurrentLimit(32);
+        motorRearRight.setSmartCurrentLimit(32);
         // Set idle mode to brake
-        motorFrontLeft.setIdleMode(CANSparkMax.IdleMode.kCoast);
-        motorFrontRight.setIdleMode(CANSparkMax.IdleMode.kCoast);
-        motorRearLeft.setIdleMode(CANSparkMax.IdleMode.kCoast);
-        motorRearRight.setIdleMode(CANSparkMax.IdleMode.kCoast);
+        motorFrontLeft.setIdleMode(CANSparkMax.IdleMode.kBrake);
+        motorFrontRight.setIdleMode(CANSparkMax.IdleMode.kBrake);
+        motorRearLeft.setIdleMode(CANSparkMax.IdleMode.kBrake);
+        motorRearRight.setIdleMode(CANSparkMax.IdleMode.kBrake);
         // Set invert
         motorFrontLeft.setInverted(Constants.MOTOR_CHASSIS_FL_INVERTED);
         motorFrontRight.setInverted(Constants.MOTOR_CHASSIS_FR_INVERTED);
@@ -69,7 +88,11 @@ public class DriveSubsystem extends SubsystemBase {
             ySpeed = Math.abs(ySpeed) >= Constants.CHASSIS_DEADLINE ? ySpeed : 0;
             xSpeed = Math.abs(xSpeed) >= Constants.CHASSIS_DEADLINE ? xSpeed : 0;
             zRotation = Math.abs(zRotation) >= Constants.CHASSIS_DEADLINE ? zRotation : 0;
-            driveCartesian(ySpeed, xSpeed, zRotation, navX.getAngle());
+            double ballX = intake.getBallX();
+            if (intake.isIntakeEnabled() && ballX!=-1){
+                zRotation-=ballAlignController.calculate(ballX-190);
+            }
+            driveCartesian(ySpeed, xSpeed, zRotation, 0);
         }, this));
     }
 
@@ -102,14 +125,19 @@ public class DriveSubsystem extends SubsystemBase {
     }
 
     public void driveCartesian(double ySpeed, double xSpeed, double zRotation, double gyroAngle) {
+        if (zRotation!=0){
+            lastAngle = navX.getAngle();
+        }else if (ySpeed!=0 || xSpeed!=0){
+            zRotation += straightController.calculate(navX.getAngle()-lastAngle);
+        }
         drive.driveCartesian(ySpeed, xSpeed, zRotation, gyroAngle);
     }
 
     public void driveVolts(double frontLeftVolts, double frontRightVolts, double rearLeftVolts, double rearRightVolts) {
-        frontLeftVolts = MathUtil.clamp(frontLeftVolts, -7, 7);
-        frontRightVolts = MathUtil.clamp(frontRightVolts, -7, 7);
-        rearLeftVolts = MathUtil.clamp(rearLeftVolts, -7, 7);
-        rearRightVolts = MathUtil.clamp(rearRightVolts, -7, 7);
+        frontLeftVolts = MathUtil.clamp(frontLeftVolts, -11, 11);
+        frontRightVolts = MathUtil.clamp(frontRightVolts, -11, 11);
+        rearLeftVolts = MathUtil.clamp(rearLeftVolts, -11, 11);
+        rearRightVolts = MathUtil.clamp(rearRightVolts, -11, 11);
         motorFrontLeft.setVoltage(frontLeftVolts);
         motorFrontRight.setVoltage(frontRightVolts);
         motorRearLeft.setVoltage(rearLeftVolts);

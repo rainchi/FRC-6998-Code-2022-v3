@@ -5,6 +5,8 @@
 
 package frc.robot;
 
+import edu.wpi.first.wpilibj.util.Color;
+
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide numerical or boolean
  * constants. This class should not be used for any other purpose. All constants should be declared
@@ -46,10 +48,10 @@ public final class Constants {
     public static final boolean MOTOR_HANG_CENTER_INVERTED = false;
     public static final boolean MOTOR_HANG_RIGHT_INVERTED = true;
     // Shoot
-    public static final boolean MOTOR_SHOOT_MAIN_INVERTED = false;
-    public static final boolean MOTOR_SHOOT_AUXILIARY_INVERTED = false;
+    public static final boolean MOTOR_SHOOT_MAIN_INVERTED = true;
+    public static final boolean MOTOR_SHOOT_AUXILIARY_INVERTED = true;
     public static final boolean MOTOR_SHOOT_ROTATE_INVERTED = false;
-    public static final boolean MOTOR_SHOOT_ANGLE_INVERTED = true;
+    public static final boolean MOTOR_SHOOT_ANGLE_INVERTED = false;
     public static final boolean MOTOR_SHOOT_TRANSFER_INVERTED = true;
     // Intake
     public static final boolean MOTOR_INTAKE_INVERTED = true;
@@ -61,7 +63,8 @@ public final class Constants {
 
     public static final float SOFT_LIMIT_LEFT_MAX = 137;
     public static final float SOFT_LIMIT_RIGHT_MAX = 137;
-    public static final float SOFT_LIMIT_CENTER_MAX = 250;
+    public static final float SOFT_LIMIT_CENTER_MAX = 270;
+    public static final float SOFT_LIMIT_SHOOT_ANGLE = 22;
 
     // Solenoid channel constants
     public static final int SOLENOID_HANG_FORWARD = 2;
@@ -88,14 +91,11 @@ public final class Constants {
     public static final double[] PID_HANG_RIGHT = {0.5, 0, 0};
     public static final double[] PID_SHOOT_MAIN = {0.7, 0, 0};
     public static final double[] PID_SHOOT_AUXILIARY = {0.0006, 0, 0};
-    public static final double[] PID_SHOOT_ROTATE = {0.02, 0, 0};
+    public static final double[] PID_SHOOT_ROTATE = {0.019, 0, 0};
     public static final double[] PID_SHOOT_ROTATE_FAST = {0.5,0,0}; // Calculate output according to navx turn rate
     public static final double[] PID_SHOOT_ANGLE = {0.05, 0, 0};
-
-    // Max positions for motors
-    public static final double POSITION_LEFT_HANG_MAX = 0;
-    public static final double POSITION_CENTER_HANG_MAX = 0;
-    public static final double POSITION_RIGHT_HANG_MAX = 0;
+    public static final double[] PID_BALL_ALIGN = {0.003,0,0};
+    public static final double[] PID_STRAIGHT = {0.005,0,0};
 
     // Auto alignment
     public static final double AUTO_ALIGNMENT_X_OFFSET = 0;
@@ -109,4 +109,7 @@ public final class Constants {
     public static final int SHOOT_RPM = 6000;
     // Shooter gearing(wheel rpm/motor rpm)
     public static final double SHOOT_GEARING = 3;
+
+    public static final Color BALL_RED = new Color(0.54,0.33,0.12);
+    public static final Color BALL_BLUE = new Color(0.14,0.38,0.46);
 }

@@ -10,6 +10,7 @@ import edu.wpi.first.math.kinematics.MecanumDriveWheelSpeeds;
 import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.CommandBase;
+import edu.wpi.first.wpilibj2.command.RamseteCommand;
 import frc.robot.Constants;
 import frc.robot.subsystems.DriveSubsystem;
 
@@ -37,7 +38,7 @@ public class RunTrajectoryCommand extends CommandBase {
     public RunTrajectoryCommand(DriveSubsystem driveTrainSubsystem, Trajectory trajectory) {
         this.trajectory = requireNonNullParam(trajectory, "trajectory", "RamseteCommand");
         pose = driveTrainSubsystem::getPose;
-        follower = new RamseteController(2, 0.7);
+        follower = new RamseteController();
         feedforward = new SimpleMotorFeedforward(Constants.FF_CHASSIS_ksVolts,
                 Constants.FF_CHASSIS_kvVoltSecondsPerMeter,
                 Constants.FF_CHASSIS_kaVoltSecondsSquaredPerMeter);
@@ -61,13 +62,13 @@ public class RunTrajectoryCommand extends CommandBase {
                                 initialState.velocityMetersPerSecond,
                                 0,
                                 initialState.curvatureRadPerMeter * initialState.velocityMetersPerSecond));
-        timer.reset();
-        timer.start();
         frontLeftController.reset();
         frontRightController.reset();
         rearLeftController.reset();
         rearRightController.reset();
-        drive.resetOdometry(drive.getPose());
+        drive.resetOdometry(trajectory.getInitialPose());
+        timer.reset();
+        timer.start();
     }
 
     @Override
