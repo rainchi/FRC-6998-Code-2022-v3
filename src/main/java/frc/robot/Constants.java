@@ -91,8 +91,8 @@ public final class Constants {
     public static final double[] PID_HANG_RIGHT = {0.5, 0, 0};
     public static final double[] PID_SHOOT_MAIN = {0.7, 0, 0};
     public static final double[] PID_SHOOT_AUXILIARY = {0.0006, 0, 0};
-    public static final double[] PID_SHOOT_ROTATE = {0.019, 0, 0};
-    public static final double[] PID_SHOOT_ROTATE_FAST = {0.5,0,0}; // Calculate output according to navx turn rate
+    public static final double[] PID_SHOOT_ROTATE = {0.021, 0, 0};
+    public static final double[] PID_SHOOT_ROTATE_FAST = {0.3,0,0}; // Calculate output according to navx turn rate
     public static final double[] PID_SHOOT_ANGLE = {0.05, 0, 0};
     public static final double[] PID_BALL_ALIGN = {0.003,0,0};
     public static final double[] PID_STRAIGHT = {0.005,0,0};

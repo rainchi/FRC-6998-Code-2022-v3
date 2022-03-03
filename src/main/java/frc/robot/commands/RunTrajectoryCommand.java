@@ -1,13 +1,13 @@
 package frc.robot.commands;
 
-import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.controller.RamseteController;
-import edu.wpi.first.math.controller.SimpleMotorFeedforward;
+import edu.wpi.first.math.controller.*;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.MecanumDriveKinematics;
 import edu.wpi.first.math.kinematics.MecanumDriveWheelSpeeds;
 import edu.wpi.first.math.trajectory.Trajectory;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.CommandBase;
 import edu.wpi.first.wpilibj2.command.RamseteCommand;
@@ -23,7 +23,7 @@ public class RunTrajectoryCommand extends CommandBase {
     private final Timer timer = new Timer();
     private final Trajectory trajectory;
     private final Supplier<Pose2d> pose;
-    private final RamseteController follower;
+    private final HolonomicDriveController follower;
     private final SimpleMotorFeedforward feedforward;
     private final MecanumDriveKinematics kinematics;
     private final Supplier<MecanumDriveWheelSpeeds> speeds;
@@ -34,11 +34,16 @@ public class RunTrajectoryCommand extends CommandBase {
     private MecanumDriveWheelSpeeds prevSpeeds;
     private double prevTime;
     private final DriveSubsystem drive;
+    private final Rotation2d targetRot;
 
-    public RunTrajectoryCommand(DriveSubsystem driveTrainSubsystem, Trajectory trajectory) {
+    public RunTrajectoryCommand(DriveSubsystem driveTrainSubsystem, Trajectory trajectory, Rotation2d targetRot) {
         this.trajectory = requireNonNullParam(trajectory, "trajectory", "RamseteCommand");
+        this.targetRot = targetRot;
         pose = driveTrainSubsystem::getPose;
-        follower = new RamseteController();
+        follower = new HolonomicDriveController(
+                new PIDController(1,0,0),
+                new PIDController(1,0,0),
+                new ProfiledPIDController(1,0,0, new TrapezoidProfile.Constraints(6.28, 3.14)));
         feedforward = new SimpleMotorFeedforward(Constants.FF_CHASSIS_ksVolts,
                 Constants.FF_CHASSIS_kvVoltSecondsPerMeter,
                 Constants.FF_CHASSIS_kaVoltSecondsSquaredPerMeter);
@@ -84,7 +89,7 @@ public class RunTrajectoryCommand extends CommandBase {
 
         var targetWheelSpeeds =
                 kinematics.toWheelSpeeds(
-                        follower.calculate(pose.get(), trajectory.sample(curTime)));
+                        follower.calculate(pose.get(), trajectory.sample(curTime), targetRot));
 
         var frontLeftSpeedSetpoint = targetWheelSpeeds.frontLeftMetersPerSecond;
         var frontRightSpeedSetpoint = targetWheelSpeeds.frontRightMetersPerSecond;

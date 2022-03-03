@@ -48,7 +48,6 @@ public class RobotContainer {
     private final ShootSubsystem shoot = new ShootSubsystem(drive);
 
     private final SendableChooser<String> pathChooser = new SendableChooser<>();
-    private Command autoCommand;
 
     private final AddressableLED hangLightStrip = new AddressableLED(9);
     private final AddressableLEDBuffer hangLightStripBuffer = new AddressableLEDBuffer(148);
@@ -134,6 +133,7 @@ public class RobotContainer {
         shoot.setDefaultCommand(new RunCommand(() -> {
             if (!teleop) return;
             if (shoot.isZeroing()) return;
+            shoot.cancelOverrideRotate();
             if (controller2.getLeftTriggerAxis() >= 0.2) {
                 hang.disableCompressor();
                 shoot.enableShootMotor();
@@ -158,25 +158,26 @@ public class RobotContainer {
      */
     public Command getAutonomousCommand() {
         Pose2d startPoint = new Pose2d(0, 0, new Rotation2d(0));
-        Pose2d endPoint = new Pose2d(1,0 , new Rotation2d(0));;
+        Pose2d endPoint = new Pose2d(1, 0, new Rotation2d(0));
+        ;
         List<Translation2d> waypoints = new ArrayList<>();
         switch (pathChooser.getSelected()) {
             case RobotContainer.AUTO_1:
-                endPoint = new Pose2d(1,0 , new Rotation2d(0));
+                endPoint = new Pose2d(1, 0, new Rotation2d(0));
                 break;
             case RobotContainer.AUTO_2:
-                endPoint = new Pose2d(2,0 , new Rotation2d(0));
+                endPoint = new Pose2d(2, 0, new Rotation2d(0));
                 waypoints = List.of(
-                        new Translation2d(1,0)
+                        new Translation2d(1, 0)
                 );
                 break;
             case RobotContainer.AUTO_3:
-                endPoint = new Pose2d(1.5, 0, new Rotation2d(0));
+                endPoint = new Pose2d(3.74, -1.22, Rotation2d.fromDegrees(15));
                 break;
             default:
                 break;
         }
-        var autoVoltageConstraint = new MecanumDriveKinematicsConstraint(drive.getDriveKinematics(), 2);
+        var autoVoltageConstraint = new MecanumDriveKinematicsConstraint(drive.getDriveKinematics(), 4);
         Trajectory trajectory = TrajectoryGenerator.generateTrajectory(
                 // Start at the origin facing the +X direction
                 startPoint,
@@ -185,43 +186,152 @@ public class RobotContainer {
                 // End 3 meters straight ahead of where we started, facing forward
                 endPoint,
                 // Pass config
-                new TrajectoryConfig(2, 0.85)
+                new TrajectoryConfig(4, 1)
                         // Add kinematics to ensure max speed is actually obeyed
                         .setKinematics(drive.getDriveKinematics())
                         // Apply the voltage constraint
                         .addConstraint(autoVoltageConstraint)
         );
-        autoCommand  = new SequentialCommandGroup(
-                new InstantCommand(shoot::enableShootMotor, shoot),
+//        Command autoCommand = new SequentialCommandGroup(
+//                new InstantCommand(shoot::enableShootMotor, shoot),
+//                new ParallelCommandGroup(
+//                        new RunTrajectoryCommand(drive, trajectory),
+//                        new SequentialCommandGroup(
+//                                new DelayCommand(0.25),
+//                                new InstantCommand(() -> intake.enableIntake(1), intake)
+//                        ),
+//                        new SequentialCommandGroup(
+//                                new DelayCommand(0.5),
+//                                new InstantCommand(() -> {
+//                                    shoot.overrideRotate(-0.4);
+//                                }, shoot),
+//                                new DelayCommand(0.25),
+//                                new InstantCommand(() -> {
+//                                    shoot.setAngleMotor(0.5);
+//                                    shoot.cancelOverrideRotate();
+//                                }),
+//                                new WaitShootSpeedCommand(shoot, 3300),
+//                                new DelayCommand(1),
+//                                new InstantCommand(() -> shoot.setTransferMotorSpeed(0.8), shoot),
+//                                new DelayCommand(0.5),
+//                                new InstantCommand(shoot::stopTransferMotor)
+//                        )
+//                ),
+//                new InstantCommand(intake::disableIntake, intake),
+//                new InstantCommand(() -> shoot.setAngleMotor(0)),
+//                new InstantCommand(() -> shoot.setTransferMotorSpeed(0.8), shoot),
+//                new DelayCommand(1),
+//                new InstantCommand(shoot::stopTransferMotor, shoot),
+//                new InstantCommand(shoot::disableShootMotor, shoot)
+//        );
+
+
+        Command autoCommand = new SequentialCommandGroup(
+                new InstantCommand(new Runnable() {
+                    @Override
+                    public void run() {
+                        shoot.enableShootMotor(3000);
+                    }
+                }, shoot),
                 new ParallelCommandGroup(
-                        new RunTrajectoryCommand(drive, trajectory),
+                        new RunTrajectoryCommand(drive, TrajectoryGenerator.generateTrajectory(
+                                // Start at the origin facing the +X direction
+                                new Pose2d(0,0 , new Rotation2d(0)),
+                                // Pass through these two interior waypoints, making an 's' curve path
+                                new ArrayList<>(),
+                                // End 3 meters straight ahead of where we started, facing forward
+                                new Pose2d(1,0, new Rotation2d(0)),
+                                // Pass config
+                                new TrajectoryConfig(4, 1)
+                                        // Add kinematics to ensure max speed is actually obeyed
+                                        .setKinematics(drive.getDriveKinematics())
+                                        // Apply the voltage constraint
+                                        .addConstraint(autoVoltageConstraint)
+                        ), new Rotation2d(0)),
                         new SequentialCommandGroup(
-                                new DelayCommand(0.25),
                                 new InstantCommand(() -> intake.enableIntake(1), intake)
                         ),
                         new SequentialCommandGroup(
-                                new DelayCommand(0.5),
+                                new DelayCommand(1),
                                 new InstantCommand(() -> {
                                     shoot.overrideRotate(-0.4);
-                                },shoot),
-                                new DelayCommand(0.25),
+                                }, shoot),
+                                new DelayCommand(0.6),
                                 new InstantCommand(() -> {
                                     shoot.setAngleMotor(0.5);
                                     shoot.cancelOverrideRotate();
                                 }),
-                                new WaitShootSpeedCommand(shoot,3300),
-                                new DelayCommand(0.5),
-                                new InstantCommand(() -> shoot.setTransferMotorSpeed(0.8),shoot),
-                                new DelayCommand(0.5),
-                                new InstantCommand(shoot::stopTransferMotor)
+                                new DelayCommand(0.7),
+                                new InstantCommand(() -> shoot.setAngleMotor(0))
                         )
                 ),
-                new InstantCommand(intake::disableIntake, intake),
-                new InstantCommand(() -> shoot.setAngleMotor(0)),
-                new InstantCommand(() -> shoot.setTransferMotorSpeed(0.8),shoot),
+                //new InstantCommand(intake::disableIntake, intake),
+                new DelayCommand(2),
+                new InstantCommand(() -> shoot.setTransferMotorSpeed(0.8), shoot),
+                new DelayCommand(0.4),
+                new InstantCommand(shoot::stopTransferMotor),
                 new DelayCommand(1),
+                new InstantCommand(() -> shoot.setTransferMotorSpeed(0.8), shoot),
+                new DelayCommand(0.5),
                 new InstantCommand(shoot::stopTransferMotor, shoot),
-                new InstantCommand(shoot::disableShootMotor, shoot)
+                new InstantCommand(() -> intake.enableIntake(1), intake),
+                new InstantCommand(new Runnable() {
+                    @Override
+                    public void run() {
+                        shoot.enableShootMotor(4400);
+                    }
+                }, shoot),
+                new RunTrajectoryCommand(drive, TrajectoryGenerator.generateTrajectory(
+                        // Start at the origin facing the +X direction
+                        new Pose2d(1,0, new Rotation2d(0)),
+                        // Pass through these two interior waypoints, making an 's' curve path
+                        new ArrayList<>(),
+                        // End 3 meters straight ahead of where we started, facing forward
+                        new Pose2d(3.77, -1.4, Rotation2d.fromDegrees(15)),
+                        // Pass config
+                        new TrajectoryConfig(4, 1)
+                                // Add kinematics to ensure max speed is actually obeyed
+                                .setKinematics(drive.getDriveKinematics())
+                                // Apply the voltage constraint
+                                .addConstraint(autoVoltageConstraint)
+                ), Rotation2d.fromDegrees(15)),
+                new CommandBase() {
+                    Timer timer = new Timer();
+
+                    @Override
+                    public void initialize() {
+                        timer.reset();
+                        timer.start();
+
+                    }
+
+                    @Override
+                    public void execute() {
+                        drive.driveCartesian(-1, 0,0);
+                    }
+
+                    @Override
+                    public void end(boolean interrupted) {
+                        drive.driveCartesian(0,0,0);
+                        timer.stop();
+                    }
+
+                    @Override
+                    public boolean isFinished() {
+                        return timer.hasElapsed(1);
+                    }
+                },
+                new DelayCommand(1.5),
+                new InstantCommand(new Runnable() {
+                    @Override
+                    public void run() {
+                        shoot.setTransferMotorSpeed(0.8);
+                    }
+                }),
+                new DelayCommand(3),
+                new InstantCommand(shoot::stopTransferMotor, shoot),
+                new InstantCommand(shoot::disableShootMotor, shoot),
+                new InstantCommand(intake::disableIntake, intake)
         );
         return autoCommand;
     }

@@ -28,7 +28,7 @@ public class WaitShootSpeedCommand extends CommandBase {
 
     @Override
     public boolean isFinished() {
-        return Math.abs(shootSubsystem.getShootMotorVelocity()-targetRPM)<200;
+        return Math.abs(shootSubsystem.getShootMotorVelocity()-targetRPM)<250;
     }
 
     @Override

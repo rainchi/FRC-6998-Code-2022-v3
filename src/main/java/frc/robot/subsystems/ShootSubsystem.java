@@ -21,7 +21,7 @@ import frc.robot.Constants;
 public class ShootSubsystem extends SubsystemBase {
     private boolean zeroing = false;
     private boolean shoot = false;
-    private double speedInRPM = 6000;
+    private double speedInRPM = -1;
     private double overrideSpeed = -2;
     private boolean hasTarget = false;
     private double targetDistance = 0;
@@ -97,8 +97,6 @@ public class ShootSubsystem extends SubsystemBase {
 
         colorMatcher.addColorMatch(Constants.BALL_RED);
         colorMatcher.addColorMatch(Constants.BALL_BLUE);
-
-        pid_Rotate.setTolerance(0.02);
     }
 
     @Override
@@ -121,7 +119,7 @@ public class ShootSubsystem extends SubsystemBase {
             if (mainShootMotor.isRevLimitSwitchClosed() == 0) {
                 zeroing = false;
                 angleMotor.set(0);
-                angleMotor.getEncoder().setPosition(-3);
+                angleMotor.getEncoder().setPosition(0);
                 angleMotor.enableSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, true);
             } else {
                 if (angleMotor.get() == 0) {
@@ -135,50 +133,46 @@ public class ShootSubsystem extends SubsystemBase {
                 if (hasTarget) {
                     double tx = limelight.getEntry("tx").getDouble(0);
                     double ty = limelight.getEntry("ty").getDouble(0);
-                    limelight.getEntry("tx").setNumber(0);
-                    limelight.getEntry("ty").setNumber(0);
-                    limelight.getEntry("tv").setNumber(0);
 
                     double angleToGoalRadians = Math.toRadians(Constants.AUTO_ALIGNMENT_MOUNT_ANGLE + ty);
                     targetDistance = (Constants.AUTO_ALIGNMENT_GOAL_HEIGHT_METER - Constants.AUTO_ALIGNMENT_LENS_HEIGHT_METER) / Math.tan(angleToGoalRadians);
 
                     double currentRotationOutput = 0;
-                    if (!pid_Rotate.atSetpoint()){
-                        currentRotationOutput += pid_Rotate.calculate(-tx);
-                    }
+                    currentRotationOutput += pid_Rotate.calculate(-tx);
                     currentRotationOutput += pid_Rotate_Fast.calculate(driveSubsystem.getTurnRate());
                     rotateMotor.set(currentRotationOutput);
                 } else {
                     rotateMotor.stopMotor();
                 }
-            }else if (overrideSpeed!=-2){
+            } else if (overrideSpeed != -2) {
                 rotateMotor.set(overrideSpeed);
-            }else{
-                rotateMotor.stopMotor();
             }
             if (shoot) {
-                double rpm = 2000+targetDistance*500;
-                if (colorResult.color == Constants.BALL_BLUE && colorResult.confidence>=0.9) {
+                double rpm = 2000 + targetDistance * 500;
+                if (speedInRPM!=-1){
+                    rpm = speedInRPM;
+                }
+                if (colorResult.color == Constants.BALL_BLUE && colorResult.confidence >= 0.9) {
                     //blue ball
-                    if (Constants.DEBUG){
+                    if (Constants.DEBUG) {
                         SmartDashboard.putString("Ball Color", "Blue");
                     }
-                    if (alliance != DriverStation.Alliance.Blue){
-                        rpm=500;
+                    if (alliance != DriverStation.Alliance.Blue) {
+                        rpm = 500;
                     }
-                } else if (colorResult.color == Constants.BALL_RED && colorResult.confidence>=0.9) {
+                } else if (colorResult.color == Constants.BALL_RED && colorResult.confidence >= 0.9) {
                     // red ball
-                    if (Constants.DEBUG){
+                    if (Constants.DEBUG) {
                         SmartDashboard.putString("Ball Color", "Red");
                     }
-                    if (alliance != DriverStation.Alliance.Red){
-                        rpm=500;
+                    if (alliance != DriverStation.Alliance.Red) {
+                        rpm = 500;
                     }
                 } else {
-                    if (Constants.DEBUG){
+                    if (Constants.DEBUG) {
                         SmartDashboard.putString("Ball Color", "Unknown");
                     }
-                    rpm=speedInRPM;
+                    rpm = speedInRPM;
                 }
                 rpm = MathUtil.clamp(rpm, 500, 6000);
                 targetVelocity = rpm;
@@ -197,10 +191,11 @@ public class ShootSubsystem extends SubsystemBase {
     }
 
     public void enableShootMotor() {
-        enableShootMotor(6000);
+        shoot = true;
+        this.speedInRPM = -1;
     }
 
-    public void enableShootMotor(double speedInRPM){
+    public void enableShootMotor(double speedInRPM) {
         shoot = true;
         this.speedInRPM = speedInRPM;
     }
@@ -245,29 +240,29 @@ public class ShootSubsystem extends SubsystemBase {
         this.alliance = alliance;
     }
 
-    public void setAngleMotor(double speed){
+    public void setAngleMotor(double speed) {
         speed = MathUtil.clamp(speed, -0.5, 0.5);
         angleMotor.set(speed);
     }
 
-    public void enableLimelightGreenLED(){
+    public void enableLimelightGreenLED() {
         limelight.getEntry("ledMode").setNumber(1);
         limelight.getEntry("ledMode").setNumber(3);
     }
-    public void disableLimeLightGreenLED(){
+
+    public void disableLimeLightGreenLED() {
         limelight.getEntry("ledMode").setNumber(3);
         limelight.getEntry("ledMode").setNumber(1);
     }
 
-    public void overrideRotate(double speed){
+    public void overrideRotate(double speed) {
         autoAlignment = false;
         rotateMotor.set(speed);
         overrideSpeed = speed;
     }
 
-    public void cancelOverrideRotate(){
+    public void cancelOverrideRotate() {
         autoAlignment = true;
-        rotateMotor.set(0);
         overrideSpeed = -2;
     }
 }

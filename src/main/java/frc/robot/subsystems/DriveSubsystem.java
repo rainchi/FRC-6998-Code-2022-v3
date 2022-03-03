@@ -125,11 +125,11 @@ public class DriveSubsystem extends SubsystemBase {
     }
 
     public void driveCartesian(double ySpeed, double xSpeed, double zRotation, double gyroAngle) {
-        if (zRotation!=0){
-            lastAngle = navX.getAngle();
-        }else if (ySpeed!=0 || xSpeed!=0){
-            zRotation += straightController.calculate(navX.getAngle()-lastAngle);
-        }
+//        if (zRotation!=0){
+//            lastAngle = navX.getAngle();
+//        }else if (ySpeed!=0 || xSpeed!=0){
+//            zRotation += straightController.calculate(navX.getAngle()-lastAngle);
+//        }
         drive.driveCartesian(ySpeed, xSpeed, zRotation, gyroAngle);
     }
 
