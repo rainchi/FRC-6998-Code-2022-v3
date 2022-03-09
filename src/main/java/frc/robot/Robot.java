@@ -105,7 +105,9 @@ public class Robot extends TimedRobot
     
     /** This method is called periodically during operator control. */
     @Override
-    public void teleopPeriodic() {}
+    public void teleopPeriodic() {
+        robotContainer.teleopPeriodic();
+    }
     
     
     @Override

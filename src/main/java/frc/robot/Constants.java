@@ -32,7 +32,6 @@ public final class Constants {
     public static final int MOTOR_SHOOT_MAIN = 1;
     public static final int MOTOR_SHOOT_AUXILIARY = 8;
     public static final int MOTOR_SHOOT_ROTATE = 9;
-    public static final int MOTOR_SHOOT_ANGLE = 10;
     public static final int MOTOR_SHOOT_TRANSFER = 3;
     // Collect
     public static final int MOTOR_INTAKE = 2;
@@ -51,20 +50,24 @@ public final class Constants {
     public static final boolean MOTOR_SHOOT_MAIN_INVERTED = true;
     public static final boolean MOTOR_SHOOT_AUXILIARY_INVERTED = true;
     public static final boolean MOTOR_SHOOT_ROTATE_INVERTED = false;
-    public static final boolean MOTOR_SHOOT_ANGLE_INVERTED = false;
     public static final boolean MOTOR_SHOOT_TRANSFER_INVERTED = true;
     // Intake
     public static final boolean MOTOR_INTAKE_INVERTED = true;
+
+
+    // Chassis motors' current limit
+    public static final int CURRENT_LIMIT_CHASSIS = 37;
 
     // Limit switch channel constants
     public static final int LIMIT_HANG_LEFT = 0;
     public static final int LIMIT_HANG_CENTER = 1;
     public static final int LIMIT_HANG_RIGHT = 2;
 
-    public static final float SOFT_LIMIT_LEFT_MAX = 137;
-    public static final float SOFT_LIMIT_RIGHT_MAX = 137;
-    public static final float SOFT_LIMIT_CENTER_MAX = 270;
-    public static final float SOFT_LIMIT_SHOOT_ANGLE = 22;
+    // 137
+    public static final float SOFT_LIMIT_LEFT_MAX = 130;
+    public static final float SOFT_LIMIT_RIGHT_MAX = 130;
+    // 270
+    public static final float SOFT_LIMIT_CENTER_MAX = 240;
 
     // Solenoid channel constants
     public static final int SOLENOID_HANG_FORWARD = 2;
@@ -89,27 +92,25 @@ public final class Constants {
     public static final double[] PID_HANG_LEFT = {0.5, 0, 0};
     public static final double[] PID_HANG_CENTER = {0.5, 0, 0};
     public static final double[] PID_HANG_RIGHT = {0.5, 0, 0};
-    public static final double[] PID_SHOOT_MAIN = {0.7, 0, 0};
+    public static final double[] PID_SHOOT_MAIN = {0.75, 0, 0};
     public static final double[] PID_SHOOT_AUXILIARY = {0.0006, 0, 0};
-    public static final double[] PID_SHOOT_ROTATE = {0.021, 0, 0};
-    public static final double[] PID_SHOOT_ROTATE_FAST = {0.3,0,0}; // Calculate output according to navx turn rate
-    public static final double[] PID_SHOOT_ANGLE = {0.05, 0, 0};
-    public static final double[] PID_BALL_ALIGN = {0.003,0,0};
-    public static final double[] PID_STRAIGHT = {0.005,0,0};
+    public static final double[] PID_SHOOT_ROTATE = {0.019, 0, 0};
+    public static final double[] PID_SHOOT_ROTATE_FAST = {0.25, 0, 0}; // Calculate output according to navx turn rate
+    public static final double[] PID_BALL_ALIGN = {0.003, 0, 0};
+    public static final double[] PID_STRAIGHT = {0.005, 0, 0};
 
     // Auto alignment
-    public static final double AUTO_ALIGNMENT_X_OFFSET = 0;
-    public static final double AUTO_ALIGNMENT_Y_OFFSET = 0;
     public static final double AUTO_ALIGNMENT_MOUNT_ANGLE = 27;
     public static final double AUTO_ALIGNMENT_LENS_HEIGHT_METER = 1.07;
     public static final double AUTO_ALIGNMENT_GOAL_HEIGHT_METER = 2.5;
 
-
-    // Wheel rpm(not motor rpm)
-    public static final int SHOOT_RPM = 6000;
     // Shooter gearing(wheel rpm/motor rpm)
     public static final double SHOOT_GEARING = 3;
 
-    public static final Color BALL_RED = new Color(0.54,0.33,0.12);
-    public static final Color BALL_BLUE = new Color(0.14,0.38,0.46);
+    public static final Color BALL_RED = new Color(0.54, 0.33, 0.12);
+    public static final Color BALL_BLUE = new Color(0.14, 0.38, 0.46);
+
+    // Addressable led port
+    public static final int LED_PWM_PORT = 9;
+    public static final int LED_LENGTH = 148;
 }

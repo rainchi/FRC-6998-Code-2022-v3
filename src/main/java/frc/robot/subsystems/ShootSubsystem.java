@@ -19,22 +19,23 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
 
 public class ShootSubsystem extends SubsystemBase {
-    private boolean zeroing = false;
     private boolean shoot = false;
     private double speedInRPM = -1;
     private double overrideSpeed = -2;
     private boolean hasTarget = false;
     private double targetDistance = 0;
     private double targetVelocity = 0;
+    private double baseSpeed = 2000;
+    private double xOffset = 0;
     private final WPI_TalonFX mainShootMotor = new WPI_TalonFX(Constants.MOTOR_SHOOT_MAIN);
     private final CANSparkMax auxiliaryShootMotor = new CANSparkMax(Constants.MOTOR_SHOOT_AUXILIARY, CANSparkMaxLowLevel.MotorType.kBrushless);
     private final WPI_VictorSPX ballTransferMotor = new WPI_VictorSPX(Constants.MOTOR_SHOOT_TRANSFER);
     private final CANSparkMax rotateMotor = new CANSparkMax(Constants.MOTOR_SHOOT_ROTATE, CANSparkMaxLowLevel.MotorType.kBrushless);
-    private final CANSparkMax angleMotor = new CANSparkMax(Constants.MOTOR_SHOOT_ANGLE, CANSparkMaxLowLevel.MotorType.kBrushless);
     private final PIDController pid_Rotate = new PIDController(Constants.PID_SHOOT_ROTATE[0], Constants.PID_SHOOT_ROTATE[1], Constants.PID_SHOOT_ROTATE[2]);
     private final PIDController pid_Rotate_Fast = new PIDController(Constants.PID_SHOOT_ROTATE_FAST[0], Constants.PID_SHOOT_ROTATE_FAST[1], Constants.PID_SHOOT_ROTATE_FAST[2]);
     private final NetworkTable limelight = NetworkTableInstance.getDefault().getTable("limelight");
     private boolean autoAlignment = true;
+    private boolean forceDisableAlignment = false;
     private final DriveSubsystem driveSubsystem;
     private final ColorSensorV3 colorSensor = new ColorSensorV3(I2C.Port.kMXP);
     private final ColorMatch colorMatcher = new ColorMatch();
@@ -46,37 +47,31 @@ public class ShootSubsystem extends SubsystemBase {
         mainShootMotor.configFactoryDefault();
         auxiliaryShootMotor.restoreFactoryDefaults();
         rotateMotor.restoreFactoryDefaults();
-        angleMotor.restoreFactoryDefaults();
         ballTransferMotor.configFactoryDefault();
 
-        mainShootMotor.configClosedloopRamp(0.1);
-        auxiliaryShootMotor.setClosedLoopRampRate(0.1);
-        rotateMotor.setClosedLoopRampRate(0.1);
-        angleMotor.setClosedLoopRampRate(0.1);
-        ballTransferMotor.configClosedloopRamp(0.1);
+        mainShootMotor.configClosedloopRamp(0.01);
+        auxiliaryShootMotor.setClosedLoopRampRate(0.01);
+        rotateMotor.setClosedLoopRampRate(0.01);
+        ballTransferMotor.configClosedloopRamp(0.01);
 
-        mainShootMotor.configOpenloopRamp(0.1);
-        auxiliaryShootMotor.setClosedLoopRampRate(0.1);
-        rotateMotor.setOpenLoopRampRate(0.1);
-        angleMotor.setOpenLoopRampRate(0.1);
-        ballTransferMotor.configOpenloopRamp(0.1);
+        mainShootMotor.configOpenloopRamp(0.01);
+        auxiliaryShootMotor.setClosedLoopRampRate(0.01);
+        rotateMotor.setOpenLoopRampRate(0.01);
+        ballTransferMotor.configOpenloopRamp(0.01);
 
         mainShootMotor.setInverted(Constants.MOTOR_SHOOT_MAIN_INVERTED);
         auxiliaryShootMotor.setInverted(Constants.MOTOR_SHOOT_AUXILIARY_INVERTED);
         rotateMotor.setInverted(Constants.MOTOR_SHOOT_ROTATE_INVERTED);
-        angleMotor.setInverted(Constants.MOTOR_SHOOT_ANGLE_INVERTED);
         ballTransferMotor.setInverted(Constants.MOTOR_SHOOT_TRANSFER_INVERTED);
 
         mainShootMotor.setNeutralMode(NeutralMode.Coast);
         auxiliaryShootMotor.setIdleMode(CANSparkMax.IdleMode.kCoast);
         rotateMotor.setIdleMode(CANSparkMax.IdleMode.kBrake);
-        angleMotor.setIdleMode(CANSparkMax.IdleMode.kBrake);
         ballTransferMotor.setNeutralMode(NeutralMode.Coast);
 
         mainShootMotor.configSupplyCurrentLimit(new SupplyCurrentLimitConfiguration(true, 35, 0, 0));
         auxiliaryShootMotor.setSmartCurrentLimit(20, 20);
         rotateMotor.setSmartCurrentLimit(25);
-        angleMotor.setSmartCurrentLimit(25);
 
         mainShootMotor.config_kP(0, Constants.PID_SHOOT_MAIN[0]);
         mainShootMotor.config_kI(0, Constants.PID_SHOOT_MAIN[1]);
@@ -87,11 +82,6 @@ public class ShootSubsystem extends SubsystemBase {
         auxiliaryShootMotor.getPIDController().setI(Constants.PID_SHOOT_AUXILIARY[1]);
         auxiliaryShootMotor.getPIDController().setD(Constants.PID_SHOOT_AUXILIARY[2]);
         auxiliaryShootMotor.getPIDController().setFF(Constants.F_SHOOT_AUXILIARY);
-
-        angleMotor.setSoftLimit(CANSparkMax.SoftLimitDirection.kForward, Constants.SOFT_LIMIT_SHOOT_ANGLE);
-        angleMotor.setSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, 0);
-        angleMotor.enableSoftLimit(CANSparkMax.SoftLimitDirection.kForward, true);
-        angleMotor.enableSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, false);
 
         mainShootMotor.overrideLimitSwitchesEnable(false);
 
@@ -104,90 +94,82 @@ public class ShootSubsystem extends SubsystemBase {
         Color detectedColor = colorSensor.getColor();
         ColorMatchResult colorResult = colorMatcher.matchClosestColor(detectedColor);
         if (Constants.DEBUG) {
-            SmartDashboard.putBoolean("ShootSubSystem Zeroing", zeroing);
             SmartDashboard.putBoolean("ShootSubsystem Limit switch", mainShootMotor.isRevLimitSwitchClosed() == 0);
-            SmartDashboard.putNumber("ShootSubsystem Angle Encoder", angleMotor.getEncoder().getPosition());
             SmartDashboard.putBoolean("ShootSubsystem Has Target", hasTarget);
             SmartDashboard.putNumber("ShootSubsystem Distance", targetDistance);
+            SmartDashboard.putNumber("ShootSubsystem Velocity", getShootMotorVelocity());
             SmartDashboard.putNumber("Red", detectedColor.red);
             SmartDashboard.putNumber("Green", detectedColor.green);
             SmartDashboard.putNumber("Blue", detectedColor.blue);
             SmartDashboard.putNumber("Ball confidence", colorResult.confidence);
         }
-        if (zeroing) { // zeroing mode
-            rotateMotor.stopMotor();
-            if (mainShootMotor.isRevLimitSwitchClosed() == 0) {
-                zeroing = false;
-                angleMotor.set(0);
-                angleMotor.getEncoder().setPosition(0);
-                angleMotor.enableSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, true);
-            } else {
-                if (angleMotor.get() == 0) {
-                    double zeroSpeed = 0.3;
-                    angleMotor.set(-zeroSpeed);
-                }
-            }
-        } else { // normal mode
-            if (autoAlignment) {
-                hasTarget = limelight.getEntry("tv").getDouble(0) >= 1.0;
-                if (hasTarget) {
-                    double tx = limelight.getEntry("tx").getDouble(0);
-                    double ty = limelight.getEntry("ty").getDouble(0);
-
-                    double angleToGoalRadians = Math.toRadians(Constants.AUTO_ALIGNMENT_MOUNT_ANGLE + ty);
-                    targetDistance = (Constants.AUTO_ALIGNMENT_GOAL_HEIGHT_METER - Constants.AUTO_ALIGNMENT_LENS_HEIGHT_METER) / Math.tan(angleToGoalRadians);
-
-                    double currentRotationOutput = 0;
-                    currentRotationOutput += pid_Rotate.calculate(-tx);
-                    currentRotationOutput += pid_Rotate_Fast.calculate(driveSubsystem.getTurnRate());
-                    rotateMotor.set(currentRotationOutput);
-                } else {
-                    rotateMotor.stopMotor();
-                }
-            } else if (overrideSpeed != -2) {
-                rotateMotor.set(overrideSpeed);
-            }
-            if (shoot) {
-                double rpm = 2000 + targetDistance * 500;
-                if (speedInRPM!=-1){
-                    rpm = speedInRPM;
-                }
-                if (colorResult.color == Constants.BALL_BLUE && colorResult.confidence >= 0.9) {
-                    //blue ball
-                    if (Constants.DEBUG) {
-                        SmartDashboard.putString("Ball Color", "Blue");
-                    }
-                    if (alliance != DriverStation.Alliance.Blue) {
-                        rpm = 500;
-                    }
-                } else if (colorResult.color == Constants.BALL_RED && colorResult.confidence >= 0.9) {
-                    // red ball
-                    if (Constants.DEBUG) {
-                        SmartDashboard.putString("Ball Color", "Red");
-                    }
-                    if (alliance != DriverStation.Alliance.Red) {
-                        rpm = 500;
-                    }
-                } else {
-                    if (Constants.DEBUG) {
-                        SmartDashboard.putString("Ball Color", "Unknown");
-                    }
-                    rpm = speedInRPM;
-                }
-                rpm = MathUtil.clamp(rpm, 500, 6000);
-                targetVelocity = rpm;
-                mainShootMotor.set(ControlMode.Velocity, rpm / 600.0 / Constants.SHOOT_GEARING * 2048.0);
+        if (forceDisableAlignment){
+            if (shoot){
+                mainShootMotor.set(ControlMode.Velocity, 3500 / 600.0 / Constants.SHOOT_GEARING * 2048.0);
                 auxiliaryShootMotor.getPIDController().setReference(2500, CANSparkMax.ControlType.kVelocity);
-            } else {
+            }else{
                 mainShootMotor.stopMotor();
                 auxiliaryShootMotor.stopMotor();
             }
+            if (autoAlignment){
+                rotateMotor.stopMotor();
+            }
+            return;
         }
-    }
+        if (autoAlignment) {
+            hasTarget = limelight.getEntry("tv").getDouble(0) >= 1.0;
+            if (hasTarget) {
+                double tx = limelight.getEntry("tx").getDouble(0)+xOffset;
+                double ty = limelight.getEntry("ty").getDouble(0);
 
-    public void zero() {
-        zeroing = true;
-        angleMotor.enableSoftLimit(CANSparkMax.SoftLimitDirection.kReverse, false);
+                double angleToGoalRadians = Math.toRadians(Constants.AUTO_ALIGNMENT_MOUNT_ANGLE + ty);
+                targetDistance = (Constants.AUTO_ALIGNMENT_GOAL_HEIGHT_METER - Constants.AUTO_ALIGNMENT_LENS_HEIGHT_METER) / Math.tan(angleToGoalRadians);
+
+                double currentRotationOutput = 0;
+                currentRotationOutput += pid_Rotate.calculate(-tx);
+                currentRotationOutput += pid_Rotate_Fast.calculate(driveSubsystem.getTurnRate());
+                rotateMotor.set(currentRotationOutput);
+            } else {
+                rotateMotor.stopMotor();
+            }
+        } else if (overrideSpeed != -2) {
+            rotateMotor.set(overrideSpeed);
+        }
+        if (shoot) {
+            double rpm = baseSpeed+ targetDistance * 500;
+            if (speedInRPM != -1) {
+                rpm = speedInRPM;
+            }
+//            if (colorResult.color == Constants.BALL_BLUE && colorResult.confidence >= 0.9) {
+//                //blue ball
+//                if (Constants.DEBUG) {
+//                    SmartDashboard.putString("Ball Color", "Blue");
+//                }
+//                if (alliance != DriverStation.Alliance.Blue) {
+//                    rpm = 500;
+//                }
+//            } else if (colorResult.color == Constants.BALL_RED && colorResult.confidence >= 0.9) {
+//                // red ball
+//                if (Constants.DEBUG) {
+//                    SmartDashboard.putString("Ball Color", "Red");
+//                }
+//                if (alliance != DriverStation.Alliance.Red) {
+//                    rpm = 500;
+//                }
+//            } else {
+//                if (Constants.DEBUG) {
+//                    SmartDashboard.putString("Ball Color", "Unknown");
+//                }
+//                rpm = speedInRPM;
+//            }
+            rpm = MathUtil.clamp(rpm, 500, 6000);
+            targetVelocity = rpm;
+            mainShootMotor.set(ControlMode.Velocity, rpm / 600.0 / Constants.SHOOT_GEARING * 2048.0);
+            auxiliaryShootMotor.getPIDController().setReference(2500, CANSparkMax.ControlType.kVelocity);
+        } else {
+            mainShootMotor.stopMotor();
+            auxiliaryShootMotor.stopMotor();
+        }
     }
 
     public void enableShootMotor() {
@@ -229,20 +211,14 @@ public class ShootSubsystem extends SubsystemBase {
     }
 
     public double getTargetVelocity() {
+        if (forceDisableAlignment){
+            return 3500;
+        }
         return targetVelocity;
-    }
-
-    public boolean isZeroing() {
-        return zeroing;
     }
 
     public void setAlliance(DriverStation.Alliance alliance) {
         this.alliance = alliance;
-    }
-
-    public void setAngleMotor(double speed) {
-        speed = MathUtil.clamp(speed, -0.5, 0.5);
-        angleMotor.set(speed);
     }
 
     public void enableLimelightGreenLED() {
@@ -264,6 +240,26 @@ public class ShootSubsystem extends SubsystemBase {
     public void cancelOverrideRotate() {
         autoAlignment = true;
         overrideSpeed = -2;
+    }
+
+    public void setBaseSpeed (double speed){
+        baseSpeed = speed;
+    }
+
+    public void setXOffset(double offset){
+        xOffset = offset;
+    }
+
+    public double getTargetDistance() {
+        return targetDistance;
+    }
+
+    public void forceDisableAlignment(boolean enable){
+        forceDisableAlignment = enable;
+    }
+
+    public boolean isForceDisableAlignment(){
+        return forceDisableAlignment;
     }
 }
 

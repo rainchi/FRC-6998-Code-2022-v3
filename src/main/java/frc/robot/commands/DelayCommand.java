@@ -7,6 +7,7 @@ import edu.wpi.first.wpilibj2.command.CommandBase;
 public class DelayCommand extends CommandBase {
     private final Timer timer = new Timer();
     private final double seconds;
+
     public DelayCommand(double seconds) {
         addRequirements();
         this.seconds = seconds;
